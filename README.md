@@ -24,7 +24,26 @@ A simple Python utility to send emails via Gmail's SMTP server.
    - Select "Mail" and "Windows Computer"
    - Copy the 16-character password
 
-3. Create config file at `~/.gmail_sender_config.toml`:
+3. Create config file at one of these locations (searched in order):
+   
+   **Current directory:**
+   ```
+   ./gmail_sender_config.toml
+   ```
+   
+   **Windows:**
+   ```
+   C:\Users\<YourUsername>\.gmail_sender_config.toml
+   C:\Users\<YourUsername>\AppData\Local\gmail_sender_config.toml
+   ```
+   
+   **Linux/macOS:**
+   ```
+   ~/.gmail_sender_config.toml
+   ~/.config/gmail_sender_config.toml
+   ```
+
+4. Add your credentials to the config file:
    ```toml
    [gmail]
    sender_email = "your.email@gmail.com"
