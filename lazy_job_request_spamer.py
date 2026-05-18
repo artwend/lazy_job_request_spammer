@@ -1,7 +1,56 @@
 import smtplib
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
+
+# Try to import tomllib (Python 3.11+), fall back to tomli
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        raise ImportError("Please install 'tomli' package: pip install tomli")
+
+
+def load_credentials(config_file: Optional[str] = None) -> tuple:
+    """
+    Load Gmail credentials from a TOML config file.
+    
+    Args:
+        config_file: Path to config file. If None, looks for ~/.gmail_sender_config.toml
+        
+    Returns:
+        Tuple of (sender_email, app_password)
+        
+    Raises:
+        FileNotFoundError: If config file doesn't exist
+        KeyError: If config file missing required fields
+    """
+    if config_file is None:
+        config_file = os.path.expanduser("~/.gmail_sender_config.toml")
+    
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(
+            f"Config file not found: {config_file}\n"
+            f"Create a TOML file with:\n"
+            f"[gmail]\n"
+            f'sender_email = "your.email@gmail.com"\n'
+            f'app_password = "xxxx xxxx xxxx xxxx"'
+        )
+    
+    with open(config_file, "rb") as f:
+        config = tomllib.load(f)
+    
+    gmail_config = config.get("gmail", {})
+    sender_email = gmail_config.get("sender_email")
+    app_password = gmail_config.get("app_password")
+    
+    if not sender_email or not app_password:
+        raise KeyError("Config file must contain [gmail] section with 'sender_email' and 'app_password'")
+    
+    return sender_email, app_password
 
 
 class GmailSender:
@@ -101,9 +150,12 @@ class GmailSender:
 
 # Example usage
 if __name__ == "__main__":
-    # Configuration
-    SENDER_EMAIL = "your.email@gmail.com"  # Replace with your Gmail address
-    APP_PASSWORD = "xxxx xxxx xxxx xxxx"    # Replace with your 16-char app password
+    # Load credentials from config file
+    try:
+        SENDER_EMAIL, APP_PASSWORD = load_credentials()
+    except (FileNotFoundError, KeyError) as e:
+        print(f"✗ Error loading credentials: {e}")
+        exit(1)
     
     # Initialize sender
     sender = GmailSender(SENDER_EMAIL, APP_PASSWORD)

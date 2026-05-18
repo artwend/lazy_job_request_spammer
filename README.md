@@ -15,6 +15,7 @@ A simple Python utility to send emails via Gmail's SMTP server.
 
 1. Gmail account with 2-Factor Authentication enabled
 2. Python 3.6+
+3. tomli package (for Python < 3.11): `pip install tomli`
 
 ### Configuration
 
@@ -24,10 +25,17 @@ A simple Python utility to send emails via Gmail's SMTP server.
    - Select "Mail" and "Windows Computer"
    - Copy the 16-character password
 
-3. Update credentials in the script:
-   ```python
-   SENDER_EMAIL = "your.email@gmail.com"
-   APP_PASSWORD = "xxxx xxxx xxxx xxxx"
+3. Create config file at `~/.gmail_sender_config.toml`:
+   ```toml
+   [gmail]
+   sender_email = "your.email@gmail.com"
+   app_password = "xxxx xxxx xxxx xxxx"
+   ```
+   
+   Or copy the example file:
+   ```bash
+   cp gmail_sender_config.toml.example ~/.gmail_sender_config.toml
+   # Edit with your credentials
    ```
 
 ## Usage
