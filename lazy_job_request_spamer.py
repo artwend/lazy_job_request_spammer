@@ -1,68 +1,7 @@
 import smtplib
-import os
-import sys
-import tomllib
-from pathlib import Path
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List, Optional
-
-
-def load_credentials(config_file: Optional[str] = None) -> tuple:
-    """
-    Load Gmail credentials from a TOML config file.
-    
-    Searches in multiple locations:
-    - Current directory: ./gmail_sender_config.toml
-    - Home directory: ~/gmail_sender_config.toml
-    
-    Args:
-        config_file: Path to config file. If None, searches default locations
-        
-    Returns:
-        Tuple of (sender_email, app_password)
-        
-    Raises:
-        FileNotFoundError: If config file doesn't exist in any location
-        KeyError: If config file missing required fields
-    """
-    if config_file is None:
-        # Define search paths for different platforms
-        home = Path.home()
-        cwd = Path.cwd()
-        search_paths = [
-            cwd / "gmail_sender_config.toml",
-            home / "gmail_sender_config.toml"
-        ]
-        
-        # Find first existing config file
-        config_file = None
-        for path in search_paths:
-            if path.exists():
-                config_file = str(path)
-                break
-        
-        if config_file is None:
-            paths_str = "\n  ".join(str(p) for p in search_paths)
-            raise FileNotFoundError(
-                f"Config file not found in any of these locations:\n  {paths_str}\n"
-                f"Create a TOML file with:\n"
-                f"[gmail]\n"
-                f'sender_email = "your.email@gmail.com"\n'
-                f'app_password = "xxxx xxxx xxxx xxxx"'
-            )
-    
-    with open(config_file, "rb") as f:
-        config = tomllib.load(f)
-    
-    gmail_config = config.get("gmail", {})
-    sender_email = gmail_config.get("sender_email")
-    app_password = gmail_config.get("app_password")
-    
-    if not sender_email or not app_password:
-        raise KeyError("Config file must contain [gmail] section with 'sender_email' and 'app_password'")
-    
-    return sender_email, app_password
+from typing import List
 
 
 class GmailSender:
