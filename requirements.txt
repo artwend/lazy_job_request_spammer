@@ -1,1 +1,1 @@
-tomli>=1.2.0; python_version < '3.11'
+# No external dependencies required for Python 3.11+

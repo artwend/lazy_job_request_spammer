@@ -1,17 +1,9 @@
 import smtplib
 import os
+import tomllib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
-
-# Try to import tomllib (Python 3.11+), fall back to tomli
-try:
-    import tomllib
-except ImportError:
-    try:
-        import tomli as tomllib
-    except ImportError:
-        raise ImportError("Please install 'tomli' package: pip install tomli")
 
 
 def load_credentials(config_file: Optional[str] = None) -> tuple:

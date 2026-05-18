@@ -14,8 +14,7 @@ A simple Python utility to send emails via Gmail's SMTP server.
 ### Prerequisites
 
 1. Gmail account with 2-Factor Authentication enabled
-2. Python 3.6+
-3. tomli package (for Python < 3.11): `pip install tomli`
+2. Python 3.11 or higher (uses built-in `tomllib`)
 
 ### Configuration
 
