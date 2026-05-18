@@ -1,4 +1,4 @@
-from lazy_job_request_spamer import GmailSender
+from gmail_sender import GmailSender
 from config import load_credentials
 
 

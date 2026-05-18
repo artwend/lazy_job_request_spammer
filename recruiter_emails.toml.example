@@ -1,0 +1,5 @@
+[recruiters]
+# Add company names or other keys from the CSV and their recruiter email addresses.
+# Example:
+# "Steadforce" = "recruiter@steadforce.com"
+# "Mobileye" = "hr@mobileye.com"

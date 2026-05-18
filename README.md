@@ -33,14 +33,12 @@ A simple Python utility to send emails via Gmail's SMTP server.
    
    **Windows:**
    ```
-   C:\Users\<YourUsername>\.gmail_sender_config.toml
-   C:\Users\<YourUsername>\AppData\Local\gmail_sender_config.toml
+   C:\Users\<YourUsername>\gmail_sender_config.toml
    ```
    
    **Linux/macOS:**
    ```
-   ~/.gmail_sender_config.toml
-   ~/.config/gmail_sender_config.toml
+   ~/gmail_sender_config.toml
    ```
 
 4. Add your credentials to the config file:
@@ -56,14 +54,23 @@ A simple Python utility to send emails via Gmail's SMTP server.
    # Edit with your credentials
    ```
 
-## Usage
+## Sending follow-up requests from CSV
 
-```python
-from lazy_job_request_spamer import GmailSender
+Create an optional recruiter mapping file in the project directory:
 
-sender = GmailSender("your.email@gmail.com", "your-app-password")
+```toml
+[recruiters]
+"Steadforce" = "recruiter@steadforce.com"
+"Mobileye" = "hr@mobileye.com"
+```
 
-# Send simple email
+Then run:
+
+```bash
+python send_followup_requests.py /path/to/Übersicht\ Bewerbungen.csv --dry-run
+```
+
+To actually send emails, omit `--dry-run`.
 sender.send_email(
     recipient_emails=["recipient@example.com"],
     subject="Hello",

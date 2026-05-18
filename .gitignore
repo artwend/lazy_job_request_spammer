@@ -1,0 +1,30 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+.env
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+
+# MacOS files
+.DS_Store
+
+# Log files
+*.log
+
+# Generated packages
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Local config
+gmail_sender_config.toml
+recruiter_emails.toml
