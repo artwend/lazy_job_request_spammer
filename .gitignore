@@ -28,3 +28,4 @@ build/
 # Local config
 followup_sender_config.toml
 recruiter_emails.toml
+sent_followups.csv

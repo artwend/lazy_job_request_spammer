@@ -8,14 +8,11 @@ from pathlib import Path
 import tomllib
 from typing import Dict, List, Optional
 
-from config import load_credentials, load_exceptions
+from config import load_config, read_credentials, read_exceptions
 from gmail_sender import GmailSender
 
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 DATE_FORMATS = ["%d/%m/%Y", "%Y-%m-%d", "%d.%m.%Y"]
-
-with open("follow_up.toml", "rb") as f:
-    _TEMPLATES = tomllib.load(f)
 
 @dataclass
 class ApplicationRecord:
@@ -117,7 +114,7 @@ def should_follow_up(record: ApplicationRecord, threshold_days: int) -> bool:
     return datetime.now() - date > timedelta(days=threshold_days)
 
 
-def build_message(record: ApplicationRecord) -> dict:
+def build_message(record: ApplicationRecord, templates: dict) -> dict:
     submitted = (
         record.submitted_on.strftime('%d.%m.%Y')
         if record.submitted_on
@@ -129,11 +126,54 @@ def build_message(record: ApplicationRecord) -> dict:
         "status": record.status,
         "submitted_on": submitted,
     }
-    tmpl = _TEMPLATES["follow_up"]
     return {
-        "subject": tmpl["subject"].format(**ctx),
-        "body": tmpl["body"].format(**ctx),
+        "subject": templates["subject"].format(**ctx),
+        "body": templates["body"].format(**ctx),
     }
+
+
+class SentLog:
+    """Read → update → save lifecycle for the sent-followup CSV log."""
+
+    _HEADER = ["date", "company", "position", "email"]
+
+    def __init__(self, path: Path) -> None:
+        self._path = path
+        self._rows: List[List[str]] = []
+        self._keys: set[tuple[str, str]] = set()
+        self._load()
+
+    # -- read --
+    def _load(self) -> None:
+        if not self._path.exists():
+            return
+        with open(self._path, newline="", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            if header and header[:4] != self._HEADER:
+                # No proper header – treat first line as data
+                f.seek(0)
+                reader = csv.reader(f)
+            for row in reader:
+                if len(row) >= 4:
+                    self._rows.append(row)
+                    self._keys.add((row[1], row[2]))
+
+    # -- update --
+    def add(self, company: str, position: str, email: str) -> None:
+        row = [datetime.now().strftime("%Y-%m-%d %H:%M"), company, position, email]
+        self._rows.append(row)
+        self._keys.add((company, position))
+
+    def __contains__(self, key: tuple[str, str]) -> bool:
+        return key in self._keys
+
+    # -- save --
+    def save(self) -> None:
+        with open(self._path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(self._HEADER)
+            writer.writerows(self._rows)
 
 
 def send_followups(
@@ -142,16 +182,21 @@ def send_followups(
     dry_run: bool = False,
     config_file: Optional[str] = None,
     recruiter_map_path: Optional[Path] = None,
+    sent_log_path: Optional[Path] = None,
 ) -> int:
     resolved_config = os.path.expandvars(config_file) if config_file else None
 
     recruiter_map = load_recruiter_map(Path(os.path.expandvars(recruiter_map_path)) if recruiter_map_path else None)
     records = parse_csv(csv_path, recruiter_map)
 
-    sender_email, app_password = load_credentials(resolved_config)
+    config = load_config(resolved_config)
+    sender_email, app_password = read_credentials(config)
     sender = GmailSender(sender_email, app_password)
 
-    skip_status, skip_companies = load_exceptions(resolved_config)
+    skip_status, skip_companies = read_exceptions(config)
+    templates = config["follow_up"]
+
+    sent_log = SentLog(sent_log_path or Path("sent_followups.csv"))
 
     count_sent = 0
     for record in records:
@@ -165,8 +210,11 @@ def send_followups(
         if not record.recruiter_email:
             print(f"⚠️ Skipping {record.company} / {record.position}: no recruiter email found")
             continue
+        if (record.company, record.position) in sent_log:
+            print(f"⏭️  Skipping {record.company} / {record.position}: already sent previously")
+            continue
 
-        subject, body = build_message(record)
+        message = build_message(record, templates)
 
         print(f"Sending to {record.recruiter_email}: {record.company} - {record.position}")
         if dry_run:
@@ -174,9 +222,14 @@ def send_followups(
             count_sent += 1
             continue
 
-        if sender.send_email([record.recruiter_email], subject, body):
+        if sender.send_email([record.recruiter_email], message["subject"], message["body"]):
+            sent_log.add(record.company, record.position, record.recruiter_email)
             count_sent += 1
 
+        if count_sent >= 25:
+            break
+
+    sent_log.save()
     return count_sent
 
 
@@ -187,7 +240,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Show which emails would be sent without sending")
     parser.add_argument("--config", type=str, default=None, help="Path to the TOML config file")
     parser.add_argument("--recruiter-map", type=Path, default=Path("recruiter_emails.toml"), help="Optional recruiter email mapping TOML file")
-    parser.add_argument("--followup", type=Path, default=Path("follow_up.toml"), help="Send follow-up emails")
+    parser.add_argument("--sent-log", type=Path, default=None, help="Path to CSV log of sent emails (default: sent_followups.csv)")
 
     args = parser.parse_args()
 
@@ -197,6 +250,7 @@ def main() -> int:
         dry_run=args.dry_run,
         config_file=args.config,
         recruiter_map_path=args.recruiter_map,
+        sent_log_path=args.sent_log,
     )
 
     print(f"\nDone. Follow-up emails sent: {count}")
