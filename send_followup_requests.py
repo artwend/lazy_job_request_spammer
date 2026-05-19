@@ -1,9 +1,11 @@
 import argparse
 import csv
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+import tomllib
 from typing import Dict, List, Optional
 
 from config import load_credentials
@@ -12,6 +14,8 @@ from gmail_sender import GmailSender
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 DATE_FORMATS = ["%d/%m/%Y", "%Y-%m-%d", "%d.%m.%Y"]
 
+with open("follow_up.toml", "rb") as f:
+    _TEMPLATES = tomllib.load(f)
 
 @dataclass
 class ApplicationRecord:
@@ -63,7 +67,7 @@ def normalize_field_name(name: str) -> str:
 
 
 def parse_csv(path: Path, recruiter_map: Dict[str, str]) -> List[ApplicationRecord]:
-    with open(path, newline="", encoding="utf-8") as csvfile:
+    with open(path, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
         rows = [
             {normalize_field_name(key): value.strip() for key, value in row.items() if key is not None}
@@ -78,6 +82,8 @@ def parse_csv(path: Path, recruiter_map: Dict[str, str]) -> List[ApplicationReco
         position = row.get("beworben_als", "").strip()
         status = row.get("stand_der_bewerbung", "").strip().lower()
         recruiter_email = None
+
+        # print(f"date={submitted_on}, response_date={response_date}, company='{company}', position='{position}', status='{status}'")
 
         # Look for email in row values
         for value in row.values():
@@ -111,16 +117,23 @@ def should_follow_up(record: ApplicationRecord, threshold_days: int) -> bool:
     return datetime.now() - date > timedelta(days=threshold_days)
 
 
-def build_message(record: ApplicationRecord) -> str:
-    return (
-        f"Hello,\n\n"
-        f"I hope you are doing well. I am following up on my application for the position '{record.position}' at '{record.company}'. "
-        f"According to my records, the application status is currently '{record.status}'. "
-        f"The application was submitted on {record.submitted_on.strftime('%d.%m.%Y') if record.submitted_on else 'an earlier date'}.\n\n"
-        f"If you have any updates or need additional information, I would be grateful to hear from you.\n\n"
-        f"Best regards,\n"
-        f"[Your Name]"
+def build_message(record: ApplicationRecord) -> dict:
+    submitted = (
+        record.submitted_on.strftime('%d.%m.%Y')
+        if record.submitted_on
+        else 'an earlier date'
     )
+    ctx = {
+        "position": record.position,
+        "company": record.company,
+        "status": record.status,
+        "submitted_on": submitted,
+    }
+    tmpl = _TEMPLATES["follow_up"]
+    return {
+        "subject": tmpl["subject"].format(**ctx),
+        "body": tmpl["body"].format(**ctx),
+    }
 
 
 def send_followups(
@@ -130,15 +143,15 @@ def send_followups(
     config_file: Optional[str] = None,
     recruiter_map_path: Optional[Path] = None,
 ) -> int:
-    recruiter_map = load_recruiter_map(recruiter_map_path)
+    recruiter_map = load_recruiter_map(Path(os.path.expandvars(recruiter_map_path)) if recruiter_map_path else None)
     records = parse_csv(csv_path, recruiter_map)
 
-    sender_email, app_password = load_credentials(config_file)
+    sender_email, app_password = load_credentials(os.path.expandvars(config_file) if config_file else None)
     sender = GmailSender(sender_email, app_password)
 
     count_sent = 0
     for record in records:
-        if record.status not in {"offen", "absage"}:
+        if record.status == "absage":
             continue
         if not should_follow_up(record, threshold_days):
             continue
@@ -146,8 +159,7 @@ def send_followups(
             print(f"⚠️ Skipping {record.company} / {record.position}: no recruiter email found")
             continue
 
-        subject = f"Follow-up: {record.position} at {record.company}"
-        body = build_message(record)
+        subject, body = build_message(record)
 
         print(f"Sending to {record.recruiter_email}: {record.company} - {record.position}")
         if dry_run:

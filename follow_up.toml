@@ -1,0 +1,15 @@
+[follow_up]
+subject = "Follow-up: Application for '{position}' at '{company}'"
+
+body = """
+Hello,
+
+I hope you are doing well. I am following up on my application for the position '{position}' at '{company}'. \
+According to my records, the application status is currently '{status}'. \
+The application was submitted on {submitted_on}.
+
+If you have any updates or need additional information, I would be grateful to hear from you.
+
+Best regards,
+[Your Name]
+"""
