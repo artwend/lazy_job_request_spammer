@@ -97,3 +97,46 @@ class GmailSender:
         for email, body in recipients_dict.items():
             results[email] = self.send_email([email], subject, body, is_html)
         return results
+
+
+if __name__ == "__main__":
+    # Replace these values with your actual Gmail credentials and recipient addresses.
+    sender_email = "your.email@gmail.com"
+    app_password = "your-app-password"
+
+    sender = GmailSender(sender_email, app_password)
+
+    print("Example 1: Simple email")
+    sender.send_email(
+        recipient_emails=["recipient@example.com"],
+        subject="Hello from Gmail Sender",
+        body="This is a test email sent using Python!"
+    )
+
+    print()
+
+    print("Example 2: HTML email")
+    html_body = """
+    <html>
+      <body>
+        <h1>Welcome!</h1>
+        <p>This is an <b>HTML email</b> with formatting.</p>
+      </body>
+    </html>
+    """
+    sender.send_email(
+        recipient_emails=["recipient@example.com"],
+        subject="HTML Email Example",
+        body=html_body,
+        is_html=True
+    )
+
+    print()
+
+    print("Example 3: Bulk emails")
+    recipients = {
+        "user1@example.com": "Hello User 1, this is your personalized message!",
+        "user2@example.com": "Hello User 2, this is your personalized message!",
+    }
+    results = sender.send_bulk_emails(recipients, "Personalized Message")
+    print(f"Bulk send results: {results}")
