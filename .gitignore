@@ -26,5 +26,5 @@ dist/
 build/
 
 # Local config
-gmail_sender_config.toml
+followup_sender_config.toml
 recruiter_emails.toml

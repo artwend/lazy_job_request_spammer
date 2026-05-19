@@ -1,6 +1,13 @@
+[gmail]
+sender_email = "your.email@gmail.com"
+app_password = "xxxx xxxx xxxx xxxx"
+
+[exceptions]
+status = "absage"
+company = "Landesamt für Steuern"
+
 [follow_up]
 subject = "Follow-up: Application for '{position}' at '{company}'"
-
 body = """
 Hello,
 

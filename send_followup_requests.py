@@ -8,7 +8,7 @@ from pathlib import Path
 import tomllib
 from typing import Dict, List, Optional
 
-from config import load_credentials
+from config import load_credentials, load_exceptions
 from gmail_sender import GmailSender
 
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -143,15 +143,22 @@ def send_followups(
     config_file: Optional[str] = None,
     recruiter_map_path: Optional[Path] = None,
 ) -> int:
+    resolved_config = os.path.expandvars(config_file) if config_file else None
+
     recruiter_map = load_recruiter_map(Path(os.path.expandvars(recruiter_map_path)) if recruiter_map_path else None)
     records = parse_csv(csv_path, recruiter_map)
 
-    sender_email, app_password = load_credentials(os.path.expandvars(config_file) if config_file else None)
+    sender_email, app_password = load_credentials(resolved_config)
     sender = GmailSender(sender_email, app_password)
+
+    skip_status, skip_companies = load_exceptions(resolved_config)
 
     count_sent = 0
     for record in records:
-        if record.status == "absage":
+        if skip_status and record.status == skip_status:
+            continue
+        if skip_companies and record.company in skip_companies:
+            print(f"⏭️  Skipping {record.company} / {record.position}: company in exceptions list")
             continue
         if not should_follow_up(record, threshold_days):
             continue
@@ -180,6 +187,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Show which emails would be sent without sending")
     parser.add_argument("--config", type=str, default=None, help="Path to the TOML config file")
     parser.add_argument("--recruiter-map", type=Path, default=Path("recruiter_emails.toml"), help="Optional recruiter email mapping TOML file")
+    parser.add_argument("--followup", type=Path, default=Path("follow_up.toml"), help="Send follow-up emails")
 
     args = parser.parse_args()
 
